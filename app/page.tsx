@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Shield, Activity, Zap, Target, Lock, CloudSun,
-  Plus, Flame, Clock, X, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Calendar
+  Shield, Activity, Zap, Target, Lock,
+  Plus, Flame, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Calendar
 } from 'lucide-react';
 
 type LogEntry = {
@@ -99,30 +99,30 @@ export default function CommandCenter() {
           <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase leading-none">
             Command Center
           </h1>
-          <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">ST-LGS // DATA_SYNC_READY</p>
+          <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase leading-none mt-1">OPERATOR: GHOSTSIL // ST-LGS</p>
         </div>
         <div className="p-2 rounded-xl bg-slate-900/50 border border-white/5 backdrop-blur-md">
-          <Activity size={18} className="text-cyan-400 animate-pulse" />
+          <Activity size={18} className="text-cyan-400" />
         </div>
       </header>
 
       {/* STATS */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-[#0A0A0A] border border-white/5 p-5 rounded-3xl">
-          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase">Temp_Lagos</p>
+          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase">Lagos_Temp</p>
           <p className="text-2xl font-light text-white">{weather.temp}°<span className="text-cyan-400 font-bold">C</span></p>
         </div>
         <div className="bg-[#0A0A0A] border border-white/5 p-5 rounded-3xl">
-          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase">System_Time</p>
+          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase">Local_Time</p>
           <p className="text-lg font-medium text-slate-200">{isClient ? time : "00:00:00"}</p>
         </div>
       </div>
 
-      {/* FITNESS LOGS WITH TIMESTAMPS */}
+      {/* FITNESS LOGS */}
       <section className="bg-[#0A0A0A] border border-white/5 rounded-[2.5rem] p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-[10px] font-black tracking-[0.25em] text-slate-500 flex items-center gap-2 uppercase">
-            <Calendar size={14} className="text-orange-500" /> Fitness_Archive
+            <Flame size={14} className="text-orange-500" /> Fitness_Logs
           </h2>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -132,50 +132,59 @@ export default function CommandCenter() {
           </button>
         </div>
 
-        <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
           {gymLogs.length > 0 ? gymLogs.map((log) => (
-            <div key={log.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl group">
+            <div key={log.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
               <div className="flex justify-between items-start mb-1">
-                <span className="text-[9px] font-bold text-blue-500/50 uppercase tracking-tighter">{log.timestamp}</span>
-                <button onClick={() => deleteLog(log.id)} className="text-slate-800 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
+                <span className="text-[8px] font-bold text-blue-500/60 uppercase">{log.timestamp}</span>
+                <button onClick={() => deleteLog(log.id)} className="text-slate-800 p-1"><Trash2 size={12} /></button>
               </div>
-              <p className="text-[12px] text-slate-300 font-mono leading-relaxed">{log.text}</p>
+              <p className="text-[11px] text-slate-300 font-mono italic">{">"} {log.text}</p>
             </div>
           )) : (
-            <p className="text-[10px] text-slate-700 text-center py-6 uppercase tracking-[0.3em]">No Logged Sessions</p>
+            <p className="text-[10px] text-slate-700 text-center py-4 uppercase tracking-[0.3em]">No Data Synced</p>
           )}
         </div>
       </section>
 
       {/* MISSION STATUS */}
-      <section className="bg-[#0A0A0A] border border-white/5 rounded-[2.5rem] p-6 mb-8">
+      <section className="bg-[#0A0A0A] border border-white/5 rounded-[2.5rem] p-6">
         <h2 className="text-[10px] font-black tracking-[0.25em] text-slate-500 mb-6 flex items-center gap-2 uppercase">
-          <Target size={14} className="text-cyan-500" /> Objective_Tracking
+          <Target size={14} className="text-cyan-500" /> Mission_Status
         </h2>
         <div className="space-y-4">
           {missions.map((mission) => {
             const progress = calculateProgress(mission.id);
             return (
-              <div key={mission.id} className="rounded-3xl bg-white/[0.01] border border-white/[0.04]">
+              <div key={mission.id} className="rounded-3xl bg-white/[0.01] border border-white/[0.04] overflow-hidden">
                 <button
                   onClick={() => setOpenMission(openMission === mission.id ? null : mission.id)}
-                  className="w-full p-5 text-left active:bg-white/[0.03] rounded-3xl"
+                  className="w-full p-5 text-left active:bg-white/[0.03]"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-bold text-slate-300 uppercase tracking-tight">{mission.title}</span>
+                    <span className="text-[11px] font-bold text-slate-300 uppercase">{mission.title}</span>
                     {openMission === mission.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
                   <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-500 transition-all duration-700" style={{ width: `${progress}%` }} />
+                    <div className="h-full bg-cyan-500 transition-all duration-500" style={{ width: `${progress}%` }} />
                   </div>
                 </button>
 
                 {openMission === mission.id && (
-                  <div className="px-5 pb-5 pt-0 space-y-2">
+                  <div className="px-5 pb-5 space-y-2">
                     {mission.tasks.map((task, idx) => (
-                      <div key={idx} onClick={() => toggleTask(mission.id, idx)} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 active:bg-blue-500/10">
-                        {missionTasks[mission.id][idx] ? <CheckCircle2 size={14} className="text-cyan-500" /> : <Circle size={14} className="text-slate-800" />}
-                        <span className={`text-[10px] uppercase tracking-wide ${missionTasks[mission.id][idx] ? 'text-slate-600 line-through' : 'text-slate-400'}`}>{task}</span>
+                      <div
+                        key={idx}
+                        onClick={() => toggleTask(mission.id, idx)}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5"
+                      >
+                        {missionTasks[mission.id][idx] ?
+                          <CheckCircle2 size={14} className="text-cyan-500" /> :
+                          <Circle size={14} className="text-slate-800" />
+                        }
+                        <span className={`text-[10px] uppercase ${missionTasks[mission.id][idx] ? 'text-slate-600 line-through' : 'text-slate-400'}`}>
+                          {task}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -186,33 +195,33 @@ export default function CommandCenter() {
         </div>
       </section>
 
+      {/* FOOTER */}
+      <footer className="mt-auto pt-4 flex justify-between items-center opacity-30">
+        <div className="flex items-center gap-2 text-[8px] font-black text-cyan-500 tracking-widest uppercase">
+          <Zap size={10} /> Uplink_Stable
+        </div>
+        <Lock size={10} className="text-slate-700" />
+      </footer>
+
       {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/98 backdrop-blur-2xl z-[500] flex items-center justify-center p-8">
-          <div className="bg-[#080808] border border-white/10 w-full rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50" />
-            <h3 className="text-[10px] font-black tracking-[0.3em] text-cyan-400 uppercase mb-8 text-center">Commit_New_Log</h3>
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500] flex items-center justify-center p-8">
+          <div className="bg-[#050505] border border-white/10 w-full rounded-[2.5rem] p-8">
+            <h3 className="text-[10px] font-black tracking-widest text-cyan-400 uppercase mb-6 text-center">New_Log_Entry</h3>
             <input
               autoFocus
-              className="w-full bg-slate-900/50 border border-white/5 rounded-2xl p-5 text-white mb-8 focus:border-blue-500/50 outline-none transition-all"
-              placeholder="Session details..."
+              className="w-full bg-slate-900 border border-white/5 rounded-2xl p-5 text-white mb-6 outline-none focus:border-cyan-500/50"
+              placeholder="System log entry..."
               value={newLog}
               onChange={(e) => setNewLog(e.target.value)}
             />
-            <div className="flex gap-4">
-              <button onClick={() => setIsModalOpen(false)} className="flex-1 bg-slate-900 text-slate-400 font-bold py-5 rounded-2xl uppercase text-[10px]">Abort</button>
-              <button onClick={addLog} className="flex-[2] bg-blue-600 text-white font-black py-5 rounded-2xl active:scale-95 uppercase tracking-widest text-[10px]">Execute_Sync</button>
+            <div className="flex gap-3">
+              <button onClick={() => setIsModalOpen(false)} className="flex-1 bg-slate-900 text-slate-500 font-bold py-4 rounded-2xl uppercase text-[10px]">Abort</button>
+              <button onClick={addLog} className="flex-[2] bg-blue-600 text-white font-black py-4 rounded-2xl uppercase text-[10px]">Sync_Data</button>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* FOOTER */ }
-  <footer className="mt-auto py-6 flex justify-center items-center opacity-30 border-t border-white/5">
-    <div className="flex items-center gap-2 text-[8px] font-black text-slate-500 tracking-[0.4em] uppercase">
-      <Shield size={10} /> Ghostsil_Protocol_v3.3
-    </div>
-  </footer>
-    </main >
+      )}
+    </main>
   );
 }
