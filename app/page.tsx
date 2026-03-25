@@ -1,100 +1,90 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-// Simplified imports to ensure build stability
-import { Shield, Activity, Zap, Target, Lock } from 'lucide-react';
 
 export default function CommandCenter() {
-  const [time, setTime] = useState("INITIALIZING...");
-  const [weather] = useState({ city: "LAGOS", temp: "31°C" });
+  const [time, setTime] = useState("00:00:00");
+  const [isClient, setIsClient] = useState(false);
 
-  // Real-time clock logic
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
+    setIsClient(true);
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString());
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 
   return (
-    <main className="min-h-screen bg-black text-blue-500 p-4 font-mono uppercase tracking-widest relative overflow-hidden">
-      {/* BACKGROUND GRID */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none"
-        style={{ backgroundImage: 'linear-gradient(#1e3a8a 1px, transparent 1px), linear-gradient(90deg, #1e3a8a 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-
+    <main className="min-h-screen bg-black text-blue-500 p-6 font-mono uppercase tracking-widest">
       {/* HEADER */}
-      <header className="border-b-2 border-blue-900 pb-4 mb-8 flex justify-between items-center relative z-10">
+      <div className="border-b-2 border-blue-900 pb-4 mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-blue-400">COMMAND CENTER v2.1</h1>
-          <p className="text-[10px] opacity-50">Personnel: ghostsil | Lagos Hub</p>
+          <h1 className="text-3xl font-black italic text-blue-400">COMMAND CENTER v2.2</h1>
+          <p className="text-[10px] opacity-50">STATION: LAGOS HUB | USER: ghostsil</p>
         </div>
-        <div className="text-right">
-          <div className="flex items-center gap-2 text-green-500">
-            <Shield size={16} />
-            <span className="text-xs font-bold">SYSTEMS: ONLINE</span>
-          </div>
+        <div className="flex items-center gap-2 text-green-500 text-xs border border-green-500/30 p-1 px-3 rounded">
+          <span>🛡️ SYSTEM_READY</span>
         </div>
-      </header>
+      </div>
 
-      {/* OBJECTIVES GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-        <div className="col-span-2 border-2 border-blue-900 bg-blue-950/20 p-6 rounded-lg backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-6 border-b border-blue-800 pb-2">
-            <Target className="text-blue-400" />
-            <h2 className="text-xl font-bold italic">Mission Parameters</h2>
+      {/* MISSION GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="col-span-2 border border-blue-800 bg-blue-950/10 p-6 rounded">
+          <div className="flex items-center gap-2 mb-6 border-b border-blue-900 pb-2">
+            <span className="text-xl">🎯</span>
+            <h2 className="text-lg font-bold">OPERATIONAL_GOALS</h2>
           </div>
-          <ul className="space-y-4">
-            {["Calisthenics & Weight Session", "YouTube Strategy: Tech History", "Canton Fair Planning"].map((task) => (
-              <li key={task} className="flex items-center gap-4 bg-blue-900/10 p-3 border-l-4 border-blue-500">
-                <input type="checkbox" className="w-5 h-5 accent-blue-500" />
-                <span className="text-sm">{task}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* STATS SIDEBAR */}
-        <div className="space-y-6">
-          <div className="border-2 border-blue-900 bg-blue-950/20 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-4 text-blue-400">
-              <Activity size={18} />
-              <h3 className="text-xs font-bold">BIOMETRICS</h3>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-3 bg-blue-900/10 border-l-2 border-blue-500">
+              <div className="w-4 h-4 border border-blue-500 rounded-sm" />
+              <span className="text-sm">FITNESS: WEIGHTS & CALISTHENICS</span>
             </div>
-            <div className="h-2 bg-blue-900 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-400 w-[75%] animate-pulse" />
+            <div className="flex items-center gap-4 p-3 bg-blue-900/10 border-l-2 border-blue-500">
+              <div className="w-4 h-4 border border-blue-500 rounded-sm" />
+              <span className="text-sm">YOUTUBE: AUTOMATION CONTENT</span>
+            </div>
+            <div className="flex items-center gap-4 p-3 bg-blue-900/10 border-l-2 border-blue-500">
+              <div className="w-4 h-4 border border-blue-500 rounded-sm" />
+              <span className="text-sm">LOGISTICS: CANTON FAIR 2026</span>
             </div>
           </div>
+        </div>
 
-          <div className="border-2 border-blue-900 bg-blue-950/20 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2 text-blue-400">
-              <Zap size={18} />
-              <h3 className="text-xs font-bold">ENVIRONMENT</h3>
+        {/* SIDEBAR */}
+        <div className="space-y-4">
+          <div className="border border-blue-900 p-4 bg-blue-950/10 rounded">
+            <div className="flex items-center gap-2 mb-2 text-blue-400 text-xs font-bold">
+              <span>📈 BIOMETRICS</span>
             </div>
-            <p className="text-[10px] opacity-70">DEVICE: PIXEL HUB<br />ENV: ANTIGRAVITY</p>
+            <div className="w-full h-1.5 bg-blue-900 rounded-full overflow-hidden">
+              <div className="bg-blue-400 h-full w-3/4 animate-pulse" />
+            </div>
+          </div>
+          <div className="border border-blue-900 p-4 bg-blue-950/10 rounded">
+            <div className="flex items-center gap-2 mb-2 text-blue-400 text-xs font-bold">
+              <span>⚡ HARDWARE_LINK</span>
+            </div>
+            <p className="text-[10px] opacity-60">HUB: GOOGLE PIXEL<br />ENGINE: ANTIGRAVITY</p>
           </div>
         </div>
       </div>
 
       {/* FOOTER */}
-      <footer className="mt-8 pt-4 border-t-2 border-blue-900 flex justify-between items-end opacity-80 text-[10px]">
+      <div className="fixed bottom-6 left-6 right-6 flex justify-between items-end border-t border-blue-900 pt-4 text-[10px]">
         <div className="flex gap-8">
-          <div className="flex flex-col">
-            <span className="text-blue-800 font-bold">LOCATION</span>
-            <span className="text-blue-400">{weather.city} // {weather.temp}</span>
+          <div>
+            <p className="text-blue-800">COORDINATES</p>
+            <p className="text-blue-400">LAGOS, NIGERIA // 31°C</p>
           </div>
-          <div className="flex flex-col">
-            <span className="text-blue-800 font-bold">TIMESTAMP</span>
-            <span className="text-blue-400">{time}</span>
+          <div>
+            <p className="text-blue-800">TEMPORAL_SYNC</p>
+            <p className="text-blue-400">{isClient ? time : "SYNCING..."}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-green-600">
-          <Lock size={12} />
-          <span>ENCRYPTED</span>
+        <div className="flex items-center gap-1 text-green-700">
+          <span>🔒 ENCRYPTED_SESSION</span>
         </div>
-      </footer>
+      </div>
     </main>
   );
 }
