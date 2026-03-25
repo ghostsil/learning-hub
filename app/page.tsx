@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Shield, Activity, Zap, Target, Lock, CloudSun,
-  Plus, Flame, Clock, X, Trash2, ChevronDown, ChevronUp
+  Plus, Flame, Clock, X, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle
 } from 'lucide-react';
 
 export default function CommandCenter() {
@@ -11,30 +11,44 @@ export default function CommandCenter() {
   const [isClient, setIsClient] = useState(false);
   const [weather, setWeather] = useState({ temp: "--", humidity: "--" });
 
-  // LOGIC: State for Fitness Logs
   const [gymLogs, setGymLogs] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newLog, setNewLog] = useState("");
-
-  // LOGIC: Mission Sub-sections
   const [openMission, setOpenMission] = useState<number | null>(null);
+
+  // LOGIC: Mission Task Tracking
+  const [missionTasks, setMissionTasks] = useState({
+    1: [false, false, false], // Fitness
+    2: [true, false, false],  // YouTube
+    3: [false, false, false]  // Logistics
+  });
 
   useEffect(() => {
     setIsClient(true);
-    const saved = localStorage.getItem('ghostsil_logs');
-    if (saved) setGymLogs(JSON.parse(saved));
+    const savedLogs = localStorage.getItem('ghostsil_logs');
+    const savedTasks = localStorage.getItem('ghostsil_tasks');
+    if (savedLogs) setGymLogs(JSON.parse(savedLogs));
+    if (savedTasks) setMissionTasks(JSON.parse(savedTasks));
 
-    const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
+    const timer = setInterval(() => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })), 1000);
+
     const fetchWeather = async () => {
       try {
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=6.5244&longitude=3.3792&current=temperature_2m,relative_humidity_2m');
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=6.5244&longitude=3.3792&current=temperature_2m');
         const data = await res.json();
-        setWeather({ temp: Math.round(data.current.temperature_2m).toString(), humidity: data.current.relative_humidity_2m });
+        setWeather({ temp: Math.round(data.current.temperature_2m).toString(), humidity: "79" });
       } catch (err) { console.error(err); }
     };
     fetchWeather();
     return () => clearInterval(timer);
   }, []);
+
+  const toggleTask = (missionId: number, taskIndex: number) => {
+    const updatedTasks = { ...missionTasks };
+    updatedTasks[missionId as keyof typeof missionTasks][taskIndex] = !updatedTasks[missionId as keyof typeof missionTasks][taskIndex];
+    setMissionTasks(updatedTasks);
+    localStorage.setItem('ghostsil_tasks', JSON.stringify(updatedTasks));
+  };
 
   const addLog = () => {
     if (newLog.trim()) {
@@ -53,94 +67,107 @@ export default function CommandCenter() {
   };
 
   const missions = [
-    { id: 1, title: "Fitness: Weights & Calisthenics", details: "Current Focus: 5x5 Bench, Muscle-up progression." },
-    { id: 2, title: "YouTube: Tech Automation", details: "Status: Scripting 'History of Autonomous Systems' video." },
-    { id: 3, title: "Logistics: Canton Fair 2026", details: "Target: April 2026. Needs flight & visa roadmap." }
+    { id: 1, title: "Fitness: Weights & Calisthenics", tasks: ["Complete 5x5 Strength Set", "Handstand practice (15 mins)", "Post-workout recovery"] },
+    { id: 2, title: "YouTube: Tech Automation", tasks: ["Research: Autonomous History", "Draft video script v1", "Edit opening sequence"] },
+    { id: 3, title: "Logistics: Canton Fair 2026", tasks: ["Verify visa requirements", "Compare flight routes", "Draft sourcing list"] }
   ];
 
   return (
-    <main className="min-h-screen bg-[#050505] text-slate-200 p-5 font-sans relative overflow-x-hidden selection:bg-blue-500/30">
-      {/* HEADER */}
-      <header className="mb-8 pt-2 flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 uppercase leading-none">
+    <main className="min-h-screen bg-[#020202] text-slate-300 p-6 font-sans flex flex-col gap-6">
+      {/* HEADER SECTION */}
+      <header className="flex justify-between items-center pt-2">
+        <div className="space-y-1">
+          <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase">
             Command Center
           </h1>
-          <p className="text-[9px] font-bold text-slate-500 tracking-[0.25em] mt-2 uppercase">OPERATOR: GHOSTSIL // ST-LGS</p>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <p className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase">Operator: Ghostsil // ST-LGS</p>
+          </div>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 p-2 rounded-xl backdrop-blur-md">
-          <Activity size={18} className="text-blue-400 animate-pulse" />
+        <div className="p-2 rounded-xl bg-slate-900/50 border border-white/5 backdrop-blur-md">
+          <Activity size={18} className="text-cyan-400" />
         </div>
       </header>
 
-      {/* STATS ROW */}
-      <section className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-slate-900/40 border border-white/5 p-4 rounded-2xl shadow-inner">
-          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase">Lagos_Temp</p>
-          <p className="text-2xl font-light">{weather.temp}°<span className="text-blue-400 font-bold text-sm">C</span></p>
+      {/* TOP STATS */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-[#0A0A0A] border border-white/5 p-5 rounded-3xl">
+          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase flex items-center gap-1.5">
+            <CloudSun size={10} /> Lagos_Temp
+          </p>
+          <p className="text-2xl font-light text-white">{weather.temp}°<span className="text-cyan-400 font-bold">c</span></p>
         </div>
-        <div className="bg-slate-900/40 border border-white/5 p-4 rounded-2xl shadow-inner">
-          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase">Local_Time</p>
-          <p className="text-lg font-medium tracking-tight text-blue-100">{isClient ? time : "--:--:--"}</p>
+        <div className="bg-[#0A0A0A] border border-white/5 p-5 rounded-3xl">
+          <p className="text-[8px] font-bold text-slate-600 mb-1 tracking-widest uppercase flex items-center gap-1.5">
+            <Clock size={10} /> Local_Time
+          </p>
+          <p className="text-lg font-medium text-slate-200 tracking-tight">{isClient ? time : "00:00:00"}</p>
         </div>
-      </section>
+      </div>
 
       {/* FITNESS LOGS */}
-      <section className="bg-slate-900/40 border border-white/5 rounded-[2rem] p-6 backdrop-blur-xl mb-8 shadow-xl">
+      <section className="bg-[#0A0A0A] border border-white/5 rounded-[2.5rem] p-6 relative overflow-hidden">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xs font-bold tracking-[0.2em] text-slate-400 flex items-center gap-2">
-            <Flame size={14} className="text-orange-500" /> FITNESS_LOGS
+          <h2 className="text-[10px] font-black tracking-[0.25em] text-slate-500 flex items-center gap-2 uppercase">
+            <Flame size={14} className="text-orange-500" /> Fitness_Logs
           </h2>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="w-10 h-10 bg-blue-500 flex items-center justify-center rounded-full active:scale-90 transition-all shadow-[0_0_15px_rgba(59,130,246,0.4)]"
+            className="w-10 h-10 bg-blue-600 flex items-center justify-center rounded-2xl active:scale-90 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)]"
           >
-            <Plus size={20} className="text-black" />
+            <Plus size={20} className="text-white" />
           </button>
         </div>
 
-        <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
           {gymLogs.length > 0 ? gymLogs.map((log, i) => (
-            <div key={i} className="flex justify-between items-center group p-3 bg-white/[0.03] border border-white/5 rounded-xl hover:border-blue-500/30 transition-all">
-              <span className="text-[12px] text-slate-300 font-mono italic flex-1 mr-2">{">"} {log}</span>
-              <button
-                onClick={() => deleteLog(i)}
-                className="text-slate-600 hover:text-red-400 transition-colors p-1"
-              >
-                <Trash2 size={14} />
-              </button>
+            <div key={i} className="flex justify-between items-center p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+              <span className="text-xs text-slate-400 font-mono italic">{">"} {log}</span>
+              <button onClick={() => deleteLog(i)} className="text-slate-700 hover:text-red-400 p-1"><Trash2 size={14} /></button>
             </div>
           )) : (
-            <div className="py-8 text-center border-2 border-dashed border-white/5 rounded-2xl">
-              <p className="text-[10px] text-slate-600 uppercase tracking-widest">Waiting for input...</p>
-            </div>
+            <p className="text-[10px] text-slate-700 text-center py-4 uppercase tracking-[0.3em]">No Data Synced</p>
           )}
         </div>
       </section>
 
-      {/* MISSIONS SECTION - WITH ACCORDIONS */}
-      <section className="bg-slate-900/40 border border-white/5 rounded-[2rem] p-6 shadow-xl">
-        <h2 className="text-xs font-bold tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2 uppercase">
-          <Target size={14} className="text-blue-500" /> Mission_Status
+      {/* MISSION STATUS - IMPROVED INTERACTIVITY */}
+      <section className="bg-[#0A0A0A] border border-white/5 rounded-[2.5rem] p-6 pb-4">
+        <h2 className="text-[10px] font-black tracking-[0.25em] text-slate-500 mb-6 flex items-center gap-2 uppercase">
+          <Target size={14} className="text-cyan-500" /> Mission_Status
         </h2>
         <div className="space-y-4">
           {missions.map((mission) => (
-            <div key={mission.id} className="rounded-2xl bg-white/[0.02] border border-white/[0.05] overflow-hidden">
+            <div key={mission.id} className="rounded-3xl bg-white/[0.01] border border-white/[0.04] transition-all">
               <button
                 onClick={() => setOpenMission(openMission === mission.id ? null : mission.id)}
-                className="w-full p-4 flex items-center justify-between active:bg-white/[0.05] transition-colors"
+                className="w-full p-5 flex items-center justify-between active:bg-white/[0.03] rounded-3xl"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${openMission === mission.id ? 'bg-blue-400 animate-pulse' : 'bg-slate-700'}`} />
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-tight text-left">{mission.title}</span>
+                <div className="flex items-center gap-4">
+                  <div className={`w-1.5 h-1.5 rounded-full ${openMission === mission.id ? 'bg-cyan-400 shadow-[0_0_8px_cyan]' : 'bg-slate-800'}`} />
+                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-tight">{mission.title}</span>
                 </div>
-                {openMission === mission.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                {openMission === mission.id ? <ChevronUp size={16} className="text-slate-600" /> : <ChevronDown size={16} className="text-slate-600" />}
               </button>
+
               {openMission === mission.id && (
-                <div className="px-4 pb-4 pt-0">
-                  <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10">
-                    <p className="text-[11px] text-blue-300 leading-relaxed italic">{mission.details}</p>
-                  </div>
+                <div className="px-5 pb-5 pt-0 space-y-3">
+                  {mission.tasks.map((task, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => toggleTask(mission.id, idx)}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 active:bg-white/[0.05]"
+                    >
+                      {missionTasks[mission.id as keyof typeof missionTasks][idx] ?
+                        <CheckCircle2 size={14} className="text-cyan-500" /> :
+                        <Circle size={14} className="text-slate-700" />
+                      }
+                      <span className={`text-[10px] uppercase tracking-wide ${missionTasks[mission.id as keyof typeof missionTasks][idx] ? 'text-slate-600 line-through' : 'text-slate-400'}`}>
+                        {task}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -148,39 +175,39 @@ export default function CommandCenter() {
         </div>
       </section>
 
-      {/* INPUT MODAL */}
+      {/* FOOTER */}
+      <footer className="mt-auto py-6 border-t border-white/5 flex justify-between items-center opacity-40">
+        <div className="flex items-center gap-2 text-[8px] font-black text-cyan-500 tracking-widest uppercase">
+          <Zap size={10} /> Secure_Connection_Stable
+        </div>
+        <Lock size={10} className="text-slate-700" />
+      </footer>
+
+      {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-6">
-          <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-sm font-black tracking-widest text-blue-400 uppercase">Input_Log</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-500"><X size={24} /></button>
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[500] flex items-center justify-center p-8">
+          <div className="bg-[#050505] border border-white/10 w-full rounded-[3rem] p-8 shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-[10px] font-black tracking-widest text-cyan-400 uppercase">New_Entry</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-600"><X size={24} /></button>
             </div>
             <input
               autoFocus
-              className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-white placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 mb-6"
-              placeholder="Ex: 50 Push-ups, 20kg Bicep Curls"
+              className="w-full bg-slate-900/50 border border-white/5 rounded-2xl p-5 text-white placeholder:text-slate-700 focus:outline-none focus:border-cyan-500/50 mb-8 font-mono text-sm"
+              placeholder="System log entry..."
               value={newLog}
               onChange={(e) => setNewLog(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addLog()}
             />
             <button
               onClick={addLog}
-              className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl active:scale-95 transition-all uppercase tracking-widest shadow-lg shadow-blue-600/20"
+              className="w-full bg-cyan-600 text-black font-black py-5 rounded-2xl active:scale-95 transition-all uppercase tracking-[0.2em] text-xs shadow-lg shadow-cyan-600/20"
             >
-              Commit to memory
+              Sync to database
             </button>
           </div>
         </div>
       )}
-
-      {/* FOOTER BAR */}
-      <footer className="mt-12 p-5 bg-slate-900/30 rounded-2xl border border-white/5 flex justify-between items-center opacity-60">
-        <div className="flex items-center gap-2 text-[9px] font-black text-blue-400/80 tracking-widest">
-          <Zap size={12} /> SECURE_CONNECTION_STABLE
-        </div>
-        <Lock size={12} className="text-slate-700" />
-      </footer>
     </main>
   );
 }
