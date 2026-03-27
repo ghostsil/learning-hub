@@ -3,14 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import {
-  Activity, Zap, Target, Lock, Plus, Trash2,
-  ChevronDown, ChevronUp, CheckCircle2, Circle, ListPlus, LayoutGrid, Search, X, Sun, Moon, AlertTriangle
+  Zap, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2,
+  Circle, ListPlus, LayoutGrid, Search, Sun, Moon, AlertTriangle, Lock
 } from 'lucide-react';
 
-// Initialize Supabase
+// Safety Check for Environment Variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Initialize client only if keys exist to prevent build crash
+const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 type Task = { id: string; text: string; completed: boolean; priority: boolean; };
 type Mission = { id: string; title: string; category: string; tasks: Task[]; };
@@ -33,7 +37,7 @@ export default function CommandCenter() {
 
   useEffect(() => {
     setIsClient(true);
-    fetchMissions();
+    if (supabase) fetchMissions();
     const savedTheme = localStorage.getItem('gs_theme');
     if (savedTheme) setDarkMode(savedTheme === 'dark');
     const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
@@ -41,6 +45,7 @@ export default function CommandCenter() {
   }, []);
 
   async function fetchMissions() {
+    if (!supabase) return;
     setLoading(true);
     const { data, error } = await supabase.from('missions').select('*');
     if (!error && data) setMissions(data);
@@ -54,7 +59,7 @@ export default function CommandCenter() {
   };
 
   const createMission = async () => {
-    if (newInput.trim() && newCategory.trim()) {
+    if (newInput.trim() && newCategory.trim() && supabase) {
       const { data, error } = await supabase.from('missions').insert([
         { title: newInput, category: newCategory.toUpperCase(), tasks: [] }
       ]).select();
@@ -64,12 +69,13 @@ export default function CommandCenter() {
   };
 
   const deleteMission = async (id: string) => {
+    if (!supabase) return;
     const { error } = await supabase.from('missions').delete().eq('id', id);
     if (!error) setMissions(missions.filter(m => m.id !== id));
   };
 
   const addTask = async () => {
-    if (newInput.trim() && activeMissionId) {
+    if (newInput.trim() && activeMissionId && supabase) {
       const mission = missions.find(m => m.id === activeMissionId);
       if (!mission) return;
       const newTask: Task = { id: Date.now().toString(), text: newInput, completed: false, priority: isPriority };
@@ -84,6 +90,7 @@ export default function CommandCenter() {
   };
 
   const toggleTask = async (mId: string, tId: string) => {
+    if (!supabase) return;
     const mission = missions.find(m => m.id === mId);
     if (!mission) return;
     const updatedTasks = mission.tasks.map(t => t.id === tId ? { ...t, completed: !t.completed } : t);
@@ -92,6 +99,7 @@ export default function CommandCenter() {
   };
 
   const deleteTask = async (mId: string, tId: string) => {
+    if (!supabase) return;
     const mission = missions.find(m => m.id === mId);
     if (!mission) return;
     const updatedTasks = mission.tasks.filter(t => t.id !== tId);
@@ -110,12 +118,18 @@ export default function CommandCenter() {
       <header className="flex justify-between items-center pt-2">
         <div className="space-y-1">
           <h1 className={`text-xl font-black tracking-tighter uppercase leading-none ${darkMode ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500' : 'text-blue-600'}`}>Command Center</h1>
-          <p className={`text-[9px] font-bold tracking-[0.2em] uppercase ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>ST-LGS // CLOUD_SYNC_v3.9</p>
+          <p className={`text-[9px] font-bold tracking-[0.2em] uppercase ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>ST-LGS // CLOUD_SYNC_v3.9.1</p>
         </div>
         <button onClick={toggleTheme} className={`p-2 rounded-xl transition-all ${darkMode ? 'bg-slate-900 text-yellow-400' : 'bg-white shadow-md text-blue-600'}`}>
           {darkMode ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </header>
+
+      {!supabase && (
+        <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl text-[10px] text-red-500 font-bold uppercase tracking-widest">
+          Error: Connection keys missing. Check Vercel Environment Variables.
+        </div>
+      )}
 
       <div className="relative">
         <Search size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -134,9 +148,9 @@ export default function CommandCenter() {
 
         <div className="space-y-4">
           {filteredMissions.map((m) => {
-            const completed = m.tasks.filter(t => t.completed).length;
-            const progress = m.tasks.length > 0 ? Math.round((completed / m.tasks.length) * 100) : 0;
-            const sortedTasks = [...m.tasks].sort((a, b) => (a.priority === b.priority ? 0 : a.priority ? -1 : 1));
+            const completed = m.tasks?.filter(t => t.completed).length || 0;
+            const progress = m.tasks?.length > 0 ? Math.round((completed / m.tasks.length) * 100) : 0;
+            const sortedTasks = [...(m.tasks || [])].sort((a, b) => (a.priority === b.priority ? 0 : a.priority ? -1 : 1));
 
             return (
               <div key={m.id} className={`rounded-3xl border overflow-hidden transition-all ${darkMode ? 'bg-white/[0.01] border-white/[0.04]' : 'bg-slate-50 border-slate-100'}`}>
