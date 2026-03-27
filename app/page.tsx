@@ -1,213 +1,260 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import {
-  Zap, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2,
-  Circle, ListPlus, LayoutGrid, Search, Sun, Moon, AlertTriangle, Lock
+  Zap,
+  Plus,
+  Trash2,
+  Edit3,
+  Check,
+  X,
+  ChevronRight,
+  RefreshCw,
+  Lock
 } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null;
+// --- CONFIGURATION ---
+const VERSION = "V4.1";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-interface Task { id: string; text: string; completed: boolean; priority: boolean; }
-interface Mission { id: string; title: string; category: string; tasks: Task[]; }
+const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+// --- TYPES ---
+interface Task {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+interface Mission {
+  id: string;
+  title: string;
+  category: string;
+  tasks: Task[];
+  isEditing?: boolean;
+}
 
 export default function CommandCenter() {
-  const [time, setTime] = useState("00:00:00");
-  const [isClient, setIsClient] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
-  const [loading, setLoading] = useState(true);
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [isMissionModalOpen, setIsMissionModalOpen] = useState(false);
-  const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
-  const [newInput, setNewInput] = useState("");
-  const [newCategory, setNewCategory] = useState("");
-  const [isPriority, setIsPriority] = useState(false);
-  const [openMission, setOpenMission] = useState<string | null>(null);
+  const [newMissionTitle, setNewMissionTitle] = useState("");
+  const [newMissionCategory, setNewMissionCategory] = useState("SYSTEM");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 1. FETCH DATA
+  const fetchMissions = async () => {
+    if (!supabase) {
+      setError("CONNECTION KEYS MISSING. CHECK VERCEL ENVIRONMENT VARIABLES.");
+      return;
+    }
+
+    setIsSyncing(true);
+    const { data, error: supabaseError } = await supabase
+      .from('missions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (supabaseError) {
+      setError(supabaseError.message);
+    } else {
+      setMissions(data || []);
+      setError(null);
+    }
+    setIsSyncing(false);
+  };
 
   useEffect(() => {
-    setIsClient(true);
-    if (supabase) fetchMissions();
-    const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
-    return () => clearInterval(timer);
+    fetchMissions();
   }, []);
 
-  async function fetchMissions() {
-    if (!supabase) return;
-    setLoading(true);
-    const { data, error } = await supabase.from('missions').select('*');
-    if (!error && data) setMissions(data as Mission[]);
-    setLoading(false);
-  }
+  // 2. ADD MISSION (WITH FORM WRAPPER)
+  const addMission = async (e: React.FormEvent) => {
+    e.preventDefault(); // Prevents page reload
+    if (!newMissionTitle.trim() || !supabase) return;
 
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-    localStorage.setItem('gs_theme', !darkMode ? 'dark' : 'light');
-  };
+    const newEntry = {
+      title: newMissionTitle.toUpperCase(),
+      category: newMissionCategory.toUpperCase(),
+      tasks: []
+    };
 
-  const createMission = async () => {
-    if (newInput.trim() && newCategory.trim() && supabase) {
-      const { data, error } = await supabase.from('missions').insert([
-        { title: newInput, category: newCategory.toUpperCase(), tasks: [] }
-      ]).select();
-      if (!error && data) setMissions([...missions, data[0] as Mission]);
-      setNewInput(""); setNewCategory(""); setIsMissionModalOpen(false);
+    const { data, error: postError } = await supabase
+      .from('missions')
+      .insert([newEntry])
+      .select();
+
+    if (!postError && data) {
+      setMissions([data[0], ...missions]);
+      setNewMissionTitle("");
     }
   };
 
+  // 3. DELETE MISSION
   const deleteMission = async (id: string) => {
     if (!supabase) return;
-    const { error } = await supabase.from('missions').delete().eq('id', id);
-    if (!error) setMissions(missions.filter(m => m.id !== id));
-  };
+    const { error: delError } = await supabase
+      .from('missions')
+      .delete()
+      .eq('id', id);
 
-  const addTask = async () => {
-    if (newInput.trim() && activeMissionId && supabase) {
-      const mission = missions.find(m => m.id === activeMissionId);
-      if (!mission) return;
-      const newTask: Task = { id: Date.now().toString(), text: newInput, completed: false, priority: isPriority };
-      const updatedTasks = [newTask, ...(mission.tasks || [])];
-      const { error } = await supabase.from('missions').update({ tasks: updatedTasks }).eq('id', activeMissionId);
-      if (!error) setMissions(missions.map(m => m.id === activeMissionId ? { ...m, tasks: updatedTasks } : m));
-      setNewInput(""); setIsPriority(false); setIsTaskModalOpen(false);
+    if (!delError) {
+      setMissions(missions.filter(m => m.id !== id));
     }
   };
 
-  const toggleTask = async (mId: string, tId: string) => {
+  // 4. TOGGLE TASK COMPLETION
+  const toggleTask = async (missionId: string, taskId: string) => {
     if (!supabase) return;
-    const mission = missions.find(m => m.id === mId);
+    const mission = missions.find(m => m.id === missionId);
     if (!mission) return;
-    const updatedTasks = mission.tasks.map(t => t.id === tId ? { ...t, completed: !t.completed } : t);
-    const { error } = await supabase.from('missions').update({ tasks: updatedTasks }).eq('id', mId);
-    if (!error) setMissions(missions.map(m => m.id === mId ? { ...m, tasks: updatedTasks } : m));
+
+    const updatedTasks = mission.tasks.map(t =>
+      t.id === taskId ? { ...t, completed: !t.completed } : t
+    );
+
+    const { error: upError } = await supabase
+      .from('missions')
+      .update({ tasks: updatedTasks })
+      .eq('id', missionId);
+
+    if (!upError) {
+      setMissions(missions.map(m =>
+        m.id === missionId ? { ...m, tasks: updatedTasks } : m
+      ));
+    }
   };
-
-  const deleteTask = async (mId: string, tId: string) => {
-    if (!supabase) return;
-    const mission = missions.find(m => m.id === mId);
-    if (!mission) return;
-    const updatedTasks = mission.tasks.filter(t => t.id !== tId);
-    const { error } = await supabase.from('missions').update({ tasks: updatedTasks }).eq('id', mId);
-    if (!error) setMissions(missions.map(m => m.id === mId ? { ...m, tasks: updatedTasks } : m));
-  };
-
-  const filteredMissions = missions.filter(m =>
-    m.title.toLowerCase().includes(searchQuery.toLowerCase()) || m.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (!isClient) return null;
 
   return (
-    <main className={`min-h-screen p-6 font-sans flex flex-col gap-6 transition-colors duration-500 ${darkMode ? 'bg-[#020202] text-slate-300' : 'bg-slate-50 text-slate-900'}`}>
-      <header className="flex justify-between items-center pt-2">
-        <div className="space-y-1">
-          <h1 className={`text-xl font-black tracking-tighter uppercase leading-none ${darkMode ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500' : 'text-blue-600'}`}>Command Center</h1>
-          <p className={`text-[9px] font-bold tracking-[0.2em] uppercase ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>ST-LGS // CLOUD_SYNC_v3.9.3</p>
-        </div>
-        <button onClick={toggleTheme} className={`p-2 rounded-xl transition-all ${darkMode ? 'bg-slate-900 text-yellow-400' : 'bg-white shadow-md text-blue-600'}`}>
-          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </header>
+    <main className="min-h-screen bg-black text-cyan-500 p-4 font-mono uppercase selection:bg-cyan-500 selection:text-black">
 
-      {!supabase && (
-        <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl text-[10px] text-red-500 font-bold uppercase tracking-widest">
-          System Offline: Connection Keys Required.
-        </div>
-      )}
-
-      <div className="relative">
-        <Search size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" />
-        <input type="text" placeholder="FILTER_SYSTEM..." className={`w-full rounded-2xl py-4 pl-12 pr-6 text-[10px] font-bold tracking-widest outline-none transition-all uppercase ${darkMode ? 'bg-[#0A0A0A] border border-white/5 text-slate-200' : 'bg-white border border-slate-200 shadow-sm'}`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-      </div>
-
-      <section className={`rounded-[2.5rem] p-6 border transition-all flex-1 ${darkMode ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-[10px] font-black tracking-[0.25em] text-slate-500 flex items-center gap-2 uppercase">
-            <LayoutGrid size={14} /> {loading ? 'SYNCING...' : 'Active_Missions'}
-          </h2>
-          <button onClick={() => { setNewInput(""); setIsMissionModalOpen(true); }} className={`w-10 h-10 flex items-center justify-center rounded-2xl active:scale-90 border transition-all ${darkMode ? 'bg-cyan-600/20 text-cyan-400 border-cyan-500/20' : 'bg-blue-600 text-white shadow-lg'}`}>
-            <Plus size={20} />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {filteredMissions.map((m) => {
-            const completed = m.tasks?.filter(t => t.completed).length || 0;
-            const progress = m.tasks?.length > 0 ? Math.round((completed / m.tasks.length) * 100) : 0;
-            const sortedTasks = [...(m.tasks || [])].sort((a, b) => (a.priority === b.priority ? 0 : a.priority ? -1 : 1));
-
-            return (
-              <div key={m.id} className={`rounded-3xl border overflow-hidden transition-all ${darkMode ? 'bg-white/[0.01] border-white/[0.04]' : 'bg-slate-50 border-slate-100'}`}>
-                <div className="p-5 flex flex-col gap-3">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <span className={`text-[8px] font-black tracking-widest uppercase ${darkMode ? 'text-blue-500' : 'text-blue-600'}`}>{m.category}</span>
-                      <h3 className={`text-[11px] font-bold uppercase ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>{m.title}</h3>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => { setActiveMissionId(m.id); setIsTaskModalOpen(true); }} className={`p-2 rounded-xl ${darkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}><ListPlus size={14} /></button>
-                      <button onClick={() => deleteMission(m.id)} className="p-2 text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-                    </div>
-                  </div>
-                  <button onClick={() => setOpenMission(openMission === m.id ? null : m.id)} className="w-full text-left">
-                    <div className={`w-full h-1 rounded-full overflow-hidden mb-2 ${darkMode ? 'bg-slate-900' : 'bg-slate-200'}`}>
-                      <div className={`h-full transition-all duration-700 ${darkMode ? 'bg-cyan-500' : 'bg-blue-600'}`} style={{ width: `${progress}%` }} />
-                    </div>
-                    <div className="flex justify-between text-[8px] font-bold uppercase text-slate-500">
-                      <span>{progress}% Complete</span>
-                      {openMission === m.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                    </div>
-                  </button>
-                </div>
-                {openMission === m.id && (
-                  <div className={`px-5 pb-5 space-y-2 pt-4 border-t ${darkMode ? 'border-white/[0.02]' : 'border-slate-200'}`}>
-                    {sortedTasks.map((t) => (
-                      <div key={t.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${t.priority && !t.completed ? (darkMode ? 'border-red-500/30 bg-red-500/5' : 'border-red-200 bg-red-50') : (darkMode ? 'bg-white/[0.02] border-white/5' : 'bg-white border-slate-200')}`}>
-                        <div className="flex items-center gap-3 flex-1" onClick={() => toggleTask(m.id, t.id)}>
-                          {t.completed ? <CheckCircle2 size={14} className="text-green-500" /> : (t.priority ? <AlertTriangle size={14} className="text-red-500 animate-pulse" /> : <Circle size={14} className="text-slate-400" />)}
-                          <span className={`text-[10px] uppercase font-bold ${t.completed ? 'text-slate-500 line-through' : (t.priority ? 'text-red-500' : '')}`}>{t.text}</span>
-                        </div>
-                        <button onClick={() => deleteTask(m.id, t.id)} className="text-slate-400 p-1 hover:text-red-500"><Trash2 size={12} /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* MODALS */}
-      {(isTaskModalOpen || isMissionModalOpen) && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[600] flex items-center justify-center p-8">
-          <div className={`w-full rounded-[2.5rem] p-8 border ${darkMode ? 'bg-[#080808] border-white/10' : 'bg-white border-slate-200'}`}>
-            <h3 className={`text-[10px] font-black tracking-widest uppercase mb-6 text-center ${darkMode ? 'text-cyan-400' : 'text-blue-600'}`}>{isTaskModalOpen ? 'Assign_Objective' : 'Init_Mission'}</h3>
-            <input autoFocus className={`w-full rounded-2xl p-5 mb-4 outline-none border ${darkMode ? 'bg-slate-900 border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder={isTaskModalOpen ? "Task Detail..." : "Mission Name..."} value={newInput} onChange={(e) => setNewInput(e.target.value)} />
-            {isMissionModalOpen && <input className={`w-full rounded-2xl p-5 mb-6 outline-none border ${darkMode ? 'bg-slate-900 border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Category..." value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />}
-            {isTaskModalOpen && (
-              <div className="flex items-center gap-3 mb-6 px-2">
-                <button onClick={() => setIsPriority(!isPriority)} className={`w-10 h-6 rounded-full transition-all relative ${isPriority ? 'bg-red-600' : 'bg-slate-700'}`}>
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isPriority ? 'left-5' : 'left-1'}`} />
-                </button>
-                <span className={`text-[9px] font-black uppercase ${isPriority ? 'text-red-500' : 'text-slate-500'}`}>High_Priority_Alert</span>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button onClick={() => { setIsTaskModalOpen(false); setIsMissionModalOpen(false); setIsPriority(false); }} className={`flex-1 font-bold py-4 rounded-2xl uppercase text-[10px] ${darkMode ? 'bg-slate-900 text-slate-500' : 'bg-slate-100 text-slate-400'}`}>Abort</button>
-              <button onClick={isTaskModalOpen ? addTask : createMission} className="flex-[2] bg-blue-600 text-white font-black py-4 rounded-2xl uppercase text-[10px]">Execute</button>
-            </div>
+      {/* HEADER */}
+      <header className="mb-8 border-b border-cyan-900 pb-4 flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-black tracking-tighter text-cyan-400">COMMAND CENTER</h1>
+          <div className="text-[10px] opacity-50 flex gap-4">
+            <span>ST-LGS // CLOUD_SYNC_{VERSION}</span>
           </div>
         </div>
+        {isSyncing && <RefreshCw size={14} className="animate-spin" />}
+      </header>
+
+      {error && (
+        <div className="mb-6 border border-red-900 bg-red-950/30 p-3 text-red-500 text-xs font-bold">
+          ERROR: {error}
+        </div>
       )}
 
-      <footer className="mt-auto py-6 flex justify-between items-center opacity-30 border-t border-slate-200/10 text-[8px] font-black uppercase tracking-[0.4em]">
-        <div><Zap size={10} className="inline mr-2" /> System_Linked // {time}</div>
-        <Lock size={10} />
+      {/* MISSION CREATOR (FORM WRAPPER FOR RETURN KEY) */}
+      <section className="mb-10 bg-cyan-950/10 border border-cyan-900/50 p-4">
+        <form onSubmit={addMission} className="space-y-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] text-cyan-700">INPUT_NEW_MISSION</label>
+            <input
+              type="text"
+              value={newMissionTitle}
+              onChange={(e) => setNewMissionTitle(e.target.value)}
+              placeholder="ENTER MISSION OBJECTIVE..."
+              className="bg-black border-b border-cyan-800 p-2 text-cyan-300 focus:outline-none focus:border-cyan-400 transition-colors"
+            />
+          </div>
+          <div className="flex justify-between items-center">
+            <select
+              value={newMissionCategory}
+              onChange={(e) => setNewMissionCategory(e.target.value)}
+              className="bg-black text-[10px] border border-cyan-900 p-1 outline-none"
+            >
+              <option value="SYSTEM">SYSTEM</option>
+              <option value="CODING">CODING</option>
+              <option value="GYM">GYM</option>
+              <option value="HUMAN">HUMAN</option>
+            </select>
+            <button
+              type="submit"
+              className="flex items-center gap-2 bg-cyan-900/30 border border-cyan-500 px-4 py-2 text-xs font-bold hover:bg-cyan-500 hover:text-black transition-all"
+            >
+              <Plus size={14} /> INITIALIZE_MISSION
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {/* ACTIVE MISSIONS LIST */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-2 mb-4 opacity-50">
+          <Zap size={14} />
+          <span className="text-xs font-bold tracking-[0.2em]">ACTIVE_MISSIONS</span>
+        </div>
+
+        {missions.map((mission) => (
+          <div key={mission.id} className="group relative border-l-2 border-cyan-900 hover:border-cyan-400 bg-cyan-950/5 p-4 transition-all">
+
+            {/* DELETE BUTTON (TOP RIGHT) */}
+            <button
+              onClick={() => deleteMission(mission.id)}
+              className="absolute top-4 right-4 text-cyan-900 hover:text-red-500 transition-colors"
+            >
+              <Trash2 size={16} />
+            </button>
+
+            <div className="mb-2">
+              <span className="text-[9px] text-cyan-600 font-bold tracking-widest">{mission.category}</span>
+              <h3 className="text-lg font-bold text-cyan-100">{mission.title}</h3>
+            </div>
+
+            {/* TASK LIST */}
+            <div className="space-y-2 mt-4 ml-2">
+              {mission.tasks.length === 0 && (
+                <p className="text-[10px] italic opacity-30">NO_SUB_TASKS_DEFINED</p>
+              )}
+              {mission.tasks.map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => toggleTask(mission.id, task.id)}
+                  className="flex items-center gap-3 cursor-pointer group/task"
+                >
+                  <div className={`w-3 h-3 border ${task.completed ? 'bg-cyan-500 border-cyan-500' : 'border-cyan-800'} transition-all`} />
+                  <span className={`text-xs ${task.completed ? 'line-through opacity-30 text-cyan-700' : 'text-cyan-400'}`}>
+                    {task.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* PROGRESS BAR */}
+            <div className="mt-6 h-1 w-full bg-cyan-950 overflow-hidden">
+              <div
+                className="h-full bg-cyan-500 shadow-[0_0_10px_#06b6d4] transition-all duration-500"
+                style={{
+                  width: `${mission.tasks.length > 0
+                    ? (mission.tasks.filter(t => t.completed).length / mission.tasks.length) * 100
+                    : 0}%`
+                }}
+              />
+            </div>
+            <div className="mt-2 text-[8px] opacity-40 flex justify-between">
+              <span>0% COMPLETE</span>
+              <span>MISSION_ID: {mission.id.split('-')[0]}</span>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* FOOTER / SYNC STATUS */}
+      <footer className="mt-20 py-8 border-t border-cyan-950 flex justify-between items-center opacity-40">
+        <div className="flex items-center gap-2 text-[10px]">
+          <Lock size={10} />
+          <span>SYSTEM_LINKED // {new Date().toLocaleTimeString()}</span>
+        </div>
+        <button
+          onClick={fetchMissions}
+          className="hover:text-cyan-400 transition-colors flex items-center gap-1 text-[10px]"
+        >
+          <RefreshCw size={10} className={isSyncing ? "animate-spin" : ""} /> FORCE_SYNC
+        </button>
       </footer>
     </main>
   );
